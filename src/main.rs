@@ -2,6 +2,9 @@ use std::{fs, path::PathBuf};
 
 use clap::{ArgAction, Parser};
 
+mod stages;
+use stages::{Controller, Stage, Stages, filters};
+
 #[derive(Parser, Debug)]
 struct Args {
     #[arg(short, long, action = ArgAction::SetTrue)]
@@ -20,54 +23,26 @@ struct Args {
     path: PathBuf,
 }
 
-struct Pipeline {
-    entries: Vec<fs::DirEntry>,
-}
-
-impl Pipeline {
-    fn new(path: PathBuf) -> Result<Pipeline, std::io::Error> {
-        let files = fs::read_dir(path)?.filter_map(Result::ok).collect();
-        Ok(Self { entries: files })
-    }
-
-    fn pipe<F>(&mut self, condition: bool, f: F) -> &mut Self
-    where
-        F: Fn(Vec<fs::DirEntry>) -> Vec<fs::DirEntry>,
-    {
-        if condition {
-            let old_entries = std::mem::take(&mut self.entries);
-            self.entries = f(old_entries);
-        }
-        self
-    }
-}
-
-fn all(entries: Vec<fs::DirEntry>) -> Vec<fs::DirEntry> {
-    entries
-}
-
-fn directories(entries: Vec<fs::DirEntry>) -> Vec<fs::DirEntry> {
-    entries.into_iter().filter(|f| f.path().is_dir()).collect()
-}
-
-fn show_files(entries: Vec<fs::DirEntry>) {
-    for f in entries {
-        let file = f.file_name();
-        let file = file.to_string_lossy();
-        println!("{}", file);
-    }
-}
-
 fn main() {
     let args = Args::parse();
 
-    if let Ok(mut pipeline) = Pipeline::new(args.path) {
-        pipeline
-            .pipe(args.all, all)
-            .pipe(args.directories, directories);
+    let entries = match fs::read_dir(args.path) {
+        Ok(entries) => entries,
+        Err(e) => panic!("Error: {}", e),
+    };
+    let entries = entries.filter_map(Result::ok).collect();
 
-        show_files(pipeline.entries);
-    } else {
-        eprintln!("Error");
+    let mut controller = Controller::new(entries);
+
+    let mut filters = vec![Stage::Filter(Box::new(filters::WithOutHiddenFiles))];
+
+    if args.all {
+        filters.remove(0);
+        filters.push(Stage::Filter(Box::new(filters::AllFiles)));
     }
+
+    let stages = Stages { filters };
+
+    controller.register_stages(stages);
+    controller.run();
 }
