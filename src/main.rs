@@ -10,14 +10,11 @@ struct Args {
     #[arg(short, long, action = ArgAction::SetTrue)]
     all: bool,
 
-    #[arg(short = 'l', long, action = ArgAction::SetTrue)]
-    list: bool,
+    #[arg(short = 'f', long, action = ArgAction::SetTrue)]
+    file_first: bool,
 
-    #[arg(short, long, action = ArgAction::SetTrue)]
-    files: bool,
-
-    #[arg(short, long, action = ArgAction::SetTrue)]
-    directories: bool,
+    #[arg(short = 'd', long, action = ArgAction::SetTrue)]
+    dir_first: bool,
 
     #[arg(default_value = ".")]
     path: PathBuf,
@@ -36,11 +33,17 @@ fn main() {
 
     let mut filters = vec![Stage::Filter(Box::new(filters::WithOutHiddenFiles))];
     let output = Stage::Output(Box::new(outputs::InlineOutput));
-    let mut sorters = vec![Stage::Sorter(Box::new(sorters::DirsFirst))];
+    let mut sorters = vec![];
 
     if args.all {
         filters.remove(0);
         filters.push(Stage::Filter(Box::new(filters::AllFiles)));
+    }
+    if args.dir_first {
+        sorters.push(Stage::Sorter(Box::new(sorters::DirsFirst)))
+    }
+    if args.file_first {
+        sorters.push(Stage::Sorter(Box::new(sorters::FilesFirst)))
     }
 
     let stages = Stages {

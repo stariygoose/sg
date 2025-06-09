@@ -78,7 +78,6 @@ impl Controller {
         match &self.filters {
             Some(filters) => {
                 for filter in filters {
-                    println!("{:?}", filter);
                     filter.apply(&mut self.entries);
                 }
             }

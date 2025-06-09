@@ -20,7 +20,7 @@ impl Output for InlineOutput {
     fn print(&self, entries: &[fs::DirEntry]) {
         entries.iter().for_each(|f: &fs::DirEntry| {
             if let Ok(name) = self.convert(f) {
-                println!("{}", name);
+                print!("{}  ", name);
             }
         })
     }
