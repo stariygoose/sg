@@ -2,7 +2,7 @@ use std::fmt::Debug;
 use std::fs;
 
 pub trait Filter: Debug {
-    fn apply(&self, entries: Vec<fs::DirEntry>) -> Vec<fs::DirEntry>;
+    fn apply(&self, entries: &mut Vec<fs::DirEntry>);
 }
 
 #[derive(Debug)]
@@ -12,16 +12,15 @@ pub struct AllFiles;
 pub struct WithOutHiddenFiles;
 
 impl Filter for AllFiles {
-    fn apply(&self, entries: Vec<fs::DirEntry>) -> Vec<fs::DirEntry> {
-        entries
-    }
+    fn apply(&self, _entries: &mut Vec<fs::DirEntry>) {}
 }
 
 impl Filter for WithOutHiddenFiles {
-    fn apply(&self, entries: Vec<fs::DirEntry>) -> Vec<fs::DirEntry> {
-        entries
-            .into_iter()
-            .filter(|f| !f.file_name().to_string_lossy().starts_with("."))
-            .collect()
+    fn apply(&self, entries: &mut Vec<fs::DirEntry>) {
+        entries.retain(|file| {
+            let name = file.file_name();
+            let name = name.to_string_lossy();
+            !name.starts_with('.')
+        });
     }
 }
